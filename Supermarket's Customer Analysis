@@ -1,0 +1,102 @@
+# Import necessary libraries
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load the Excel file
+file_path = "Customers.xlsx"  # Ensure the file is in the same directory as the notebook
+df = pd.read_excel(file_path)
+
+# Convert 'date_time' column to datetime format
+df['date_time'] = pd.to_datetime(df['date_time'])
+
+# Extract day, hour, and weekday name
+df['day'] = df['date_time'].dt.day
+df['hour'] = df['date_time'].dt.hour
+df['weekday'] = df['date_time'].dt.day_name()  # Extract weekday name
+
+# Define function to assign periods
+def assign_period(hour):
+    if 6 <= hour < 12:
+        return "Morning"
+    elif 12 <= hour < 18:
+        return "Afternoon"
+    elif 18 <= hour < 24:
+        return "Evening"
+    else:
+        return "Night"
+
+# Apply function to create 'period' column
+df['period'] = df['hour'].apply(assign_period)
+
+# Define function to classify weekend vs. weekday
+df['weekend'] = df['weekday'].apply(lambda x: "Weekend" if x in ["Saturday", "Sunday"] else "Weekday")
+
+# Display the first few rows of the updated DataFrame
+print(df.head())
+
+# Save the processed data to a new Excel file
+df.to_excel("Processed_Customers.xlsx", index=False)
+
+
+# General statistics
+print(df.describe())
+
+# Group by day to see daily customer trends
+daily_customers = df.groupby('day')['No_of_customers'].sum()
+print(daily_customers.describe())
+
+# Group by hour to see customer distribution per hour
+hourly_customers = df.groupby('hour')['No_of_customers'].mean()
+print(hourly_customers.describe())
+
+# Group by period
+period_customers = df.groupby('period')['No_of_customers'].mean()
+print(period_customers)
+
+# Group by weekday
+weekday_customers = df.groupby('weekday')['No_of_customers'].sum().sort_values()
+print(weekday_customers)
+
+# Group by weekend vs. weekday
+weekend_vs_weekday = df.groupby('weekend')['No_of_customers'].sum()
+print(weekend_vs_weekday)
+
+
+# Set Seaborn style
+sns.set(style="whitegrid")
+
+# Customers per hour (Fixed Warning)
+plt.figure(figsize=(12,6))
+sns.lineplot(x=hourly_customers.index, y=hourly_customers.values, marker='o')
+plt.xlabel("Hour of the Day")
+plt.ylabel("Average Number of Customers")
+plt.title("Customer Trends by Hour")
+plt.show()
+
+# Customers per period (Morning, Afternoon, Evening, Night) (Fixed Warning)
+plt.figure(figsize=(8,5))
+sns.barplot(x=period_customers.index, y=period_customers.values, hue=period_customers.index, palette="viridis", legend=False)
+plt.xlabel("Period of the Day")
+plt.ylabel("Average Number of Customers")
+plt.title("Customer Trends by Period")
+plt.show()
+
+# Customers per weekday (Fixed Warning)
+plt.figure(figsize=(10,5))
+sns.barplot(x=weekday_customers.index, y=weekday_customers.values, hue=weekday_customers.index, palette="coolwarm", legend=False)
+plt.xlabel("Day of the Week")
+plt.ylabel("Total Number of Customers")
+plt.title("Customer Trends by Day of the Week")
+plt.xticks(rotation=45)
+plt.show()
+
+# Customers: Weekend vs. Weekday (Fixed Warning)
+plt.figure(figsize=(6,4))
+sns.barplot(x=weekend_vs_weekday.index, y=weekend_vs_weekday.values, hue=weekend_vs_weekday.index, palette="Set2", legend=False)
+plt.xlabel("Day Type")
+plt.ylabel("Total Number of Customers")
+plt.title("Customer Trends: Weekends vs. Weekdays")
+plt.show()
+
+
