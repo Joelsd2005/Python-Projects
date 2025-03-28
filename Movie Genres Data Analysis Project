@@ -1,0 +1,93 @@
+import pandas as pd
+
+# Load dataset
+movies = pd.read_csv(r'C:\Users\davis\OneDrive\Documents\imdb_movies.csv')
+
+# Display dataset information
+pd.set_option('display.max.rows', 11000)
+pd.set_option('display.max.columns', 22)
+movies.info()
+
+# Check for duplicate rows
+print("Duplicate Rows:")
+print(movies[movies.duplicated()])
+
+# Remove duplicate rows
+movies.drop_duplicates(inplace=True)
+
+# Drop rows where 'genres' column is missing
+movies.dropna(subset=['genres'], inplace=True)
+
+# Create 'profit' column (Revenue - Budget)
+movies['profit'] = movies['revenue'] - movies['budget']
+
+# Selecting relevant columns for genre analysis
+movies_genre = movies[['popularity', 'budget', 'revenue', 'original_title', 'runtime', 'genres', 'release_date', 'vote_count', 'vote_average', 'profit']]
+print(movies_genre.head())
+
+from pandas import Series, DataFrame
+
+# Split genres into multiple rows
+split = movies_genre['genres'].str.split('|').apply(Series, 1).stack()
+split.index = split.index.droplevel(-1)
+split.name = 'genres_split'
+del movies_genre['genres']
+movies_genre = movies_genre.join(split)
+
+# Q1: Which genres are the most common?
+genres_count = pd.DataFrame(movies_genre.groupby('genres_split')['original_title'].nunique().sort_values(ascending=True))
+
+genres_count['original_title'].plot.pie(title='Movies Per Genre in %', autopct='%1.1f%%', figsize=(10,10))
+genres_count['original_title'].plot.barh(title='Movies Per Genre', figsize=(10,9))
+
+# Q2: Which genres have high average budget and revenue?
+genres_avg = pd.DataFrame(movies_genre.groupby('genres_split').mean())
+pd.options.display.float_format = '{:.2f}'.format
+
+genres_avg.sort_values('budget', ascending=True, inplace=True)
+genres_avg[['budget', 'revenue']].plot.barh(title='Budget and Revenue by Genre', figsize=(10,9))
+
+# Q3: Which genres have high average profit?
+genres_avg.sort_values('profit', ascending=True, inplace=True)
+genres_avg['profit'].plot.barh(title='Profit by Genre', figsize=(10,9))
+
+# Q4: Which genres have high average popularity?
+genres_avg.sort_values('popularity', ascending=True, inplace=True)
+genres_avg['popularity'].plot.barh(title='Popularity by Genre', figsize=(10,9))
+
+# Q5: Which genres have the highest number of movies with a voting average >= 8?
+vote_fifty = movies_genre[(movies_genre['vote_count'] >= 0) & (movies_genre['vote_average'] >= 8)]
+genres_vote = pd.DataFrame(vote_fifty.groupby('genres_split')['vote_average'].nunique().sort_values(ascending=True))
+
+genres_vote['vote_average'].plot.barh(title='Vote Average by Genre', figsize=(10,9))
+
+# Hypothesis Testing
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# H1: The best movies according to vote average return high profit and revenue
+movies_counted = movies_genre[movies_genre['vote_count'] >= 50]
+print(movies_counted.corr(method='spearman'))
+
+sns.regplot(x='vote_average', y='revenue', data=movies_counted, line_kws={'color': 'red'})
+plt.title('Vote Average vs Revenue')
+plt.figure(figsize=(10,5))
+plt.show()
+
+# H2: The best movies according to popularity return high profit and revenue
+sns.regplot(x='popularity', y='revenue', data=movies_counted, line_kws={'color': 'red'})
+plt.title('Popularity vs Revenue')
+plt.figure(figsize=(10,5))
+plt.show()
+
+# H3: Highly budgeted movies return high revenue and profit
+sns.regplot(x='budget', y='profit', data=movies_counted, line_kws={'color': 'red'})
+plt.title('Budget vs Profit')
+plt.figure(figsize=(10,5))
+plt.show()
+
+# H4: Highly budgeted movies have high popularity
+sns.regplot(x='budget', y='popularity', data=movies_counted, line_kws={'color': 'red'})
+plt.title('Budget vs Popularity')
+plt.figure(figsize=(10,5))
+plt.show()
